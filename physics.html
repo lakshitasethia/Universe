@@ -726,6 +726,79 @@
       width: 100vw;
       height: 100vw;
     }
+
+    /* Time Dilation active message overlay */
+    .hud-dilation-msg {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      text-align: center;
+      pointer-events: none;
+      display: none;
+      font-family: var(--font-display);
+    }
+    .hud-dilation-msg .main-msg {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 900;
+      color: #5ef6ff;
+      text-shadow: 0 0 10px rgba(94, 246, 255, 0.8), 0 0 30px rgba(94, 246, 255, 0.4);
+      letter-spacing: 0.15em;
+      margin-bottom: 10px;
+    }
+    .hud-dilation-msg .sub-msg {
+      font-size: clamp(0.7rem, 1.5vw, 1.1rem);
+      font-family: var(--font-mono);
+      color: rgba(94, 246, 255, 0.6);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    @keyframes flash-dilation {
+      0% { opacity: 0; }
+      15% { opacity: 1; }
+      30% { opacity: 0.1; }
+      45% { opacity: 1; }
+      60% { opacity: 0.1; }
+      75% { opacity: 1; }
+      90%, 100% { opacity: 0.35; }
+    }
+    .hud-dilation-msg.active {
+      display: block;
+      animation: flash-dilation 2.5s ease-out forwards;
+    }
+
+    /* Time Warp Ripple Effect */
+    .time-ripple-effect {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(94, 246, 255, 0.4);
+      box-shadow: 0 0 15px rgba(94, 246, 255, 0.2);
+      pointer-events: none;
+      z-index: 1;
+      display: none;
+    }
+    @keyframes ripple-out {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+      }
+      100% {
+        width: 150vmax;
+        height: 150vmax;
+        opacity: 0;
+      }
+    }
+    .time-ripple-effect.active {
+      display: block;
+      animation: ripple-out 3s linear infinite;
+    }
   </style>
 </head>
 
@@ -749,6 +822,13 @@
     <div id="supernova-circle" class="supernova-elem"></div>
     <div id="supernova-ring" class="supernova-elem"></div>
     <div id="supernova-glow" class="supernova-elem"></div>
+
+    <!-- TIME WARP DILATION HUD -->
+    <div id="time-dilation-msg" class="hud-dilation-msg">
+      <div class="main-msg">TIME DILATION ACTIVE</div>
+      <div class="sub-msg">NOW TRY CLICKING SOMETHING</div>
+    </div>
+    <div id="time-ripple" class="time-ripple-effect"></div>
 
     <!-- STATUS LABELS -->
     <div id="status-time" class="status-label">⏱ TIME DILATION ACTIVE</div>
@@ -831,6 +911,7 @@
     <button class="btn reset-btn" data-mode="reset" style="--accent: #f3f8f7;">⟲ RESET SYSTEM</button>
   </div>
 
+
   <!-- MATTER.JS CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
 
@@ -849,7 +930,6 @@
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
     camera.position.z = 500;
 
-    // Create circular star texture
     const texCanvas = document.createElement('canvas');
     texCanvas.width = 32; texCanvas.height = 32;
     const ctx = texCanvas.getContext('2d');
@@ -870,73 +950,52 @@
       new THREE.Color('#e8f4ff')
     ];
 
-    // 1. Dynamic Stars (1500 stars)
+    // Dynamic Stars
     const dynamicCount = 1500;
     const dynamicGeometry = new THREE.BufferGeometry();
     const dynamicPositions = new Float32Array(dynamicCount * 3);
     const dynamicColors = new Float32Array(dynamicCount * 3);
-
     for (let i = 0; i < dynamicCount; i++) {
       dynamicPositions[i * 3] = (Math.random() - 0.5) * 2000;
       dynamicPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
       dynamicPositions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
-
       const color = colorsList[Math.floor(Math.random() * colorsList.length)];
       dynamicColors[i * 3] = color.r;
       dynamicColors[i * 3 + 1] = color.g;
       dynamicColors[i * 3 + 2] = color.b;
     }
-
     dynamicGeometry.setAttribute('position', new THREE.BufferAttribute(dynamicPositions, 3));
     dynamicGeometry.setAttribute('color', new THREE.BufferAttribute(dynamicColors, 3));
-
     const dynamicMaterial = new THREE.PointsMaterial({
-      size: 6.0,
-      map: starTexture,
-      transparent: true,
-      opacity: 0.95,
-      sizeAttenuation: true,
-      vertexColors: true,
-      depthWrite: false
+      size: 6.0, map: starTexture, transparent: true, opacity: 0.95,
+      sizeAttenuation: true, vertexColors: true, depthWrite: false
     });
-
     const dynamicStars = new THREE.Points(dynamicGeometry, dynamicMaterial);
     scene.add(dynamicStars);
 
-    // 2. Static Stars (3500 stars)
+    // Static Stars
     const staticCount = 3500;
     const staticGeometry = new THREE.BufferGeometry();
     const staticPositions = new Float32Array(staticCount * 3);
     const staticColors = new Float32Array(staticCount * 3);
-
     for (let i = 0; i < staticCount; i++) {
       staticPositions[i * 3] = (Math.random() - 0.5) * 2000;
       staticPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
       staticPositions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
-
       const color = colorsList[Math.floor(Math.random() * colorsList.length)];
       staticColors[i * 3] = color.r;
       staticColors[i * 3 + 1] = color.g;
       staticColors[i * 3 + 2] = color.b;
     }
-
     staticGeometry.setAttribute('position', new THREE.BufferAttribute(staticPositions, 3));
     staticGeometry.setAttribute('color', new THREE.BufferAttribute(staticColors, 3));
-
     const staticMaterial = new THREE.PointsMaterial({
-      size: 4.0,
-      map: starTexture,
-      transparent: true,
-      opacity: 0.85,
-      sizeAttenuation: true,
-      vertexColors: true,
-      depthWrite: false
+      size: 4.0, map: starTexture, transparent: true, opacity: 0.85,
+      sizeAttenuation: true, vertexColors: true, depthWrite: false
     });
-
     const staticStars = new THREE.Points(staticGeometry, staticMaterial);
     scene.add(staticStars);
 
-    // Very subtle drift animation
     function animateStars() {
       requestAnimationFrame(animateStars);
       dynamicStars.rotation.y += 0.00005;
@@ -945,7 +1004,6 @@
     }
     animateStars();
 
-    // Handle resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -960,7 +1018,6 @@
     const W = () => window.innerWidth;
     const H = () => window.innerHeight;
 
-    // Predefined positions (% of viewport)
     const positions = {
       'hero-title': { x: 50, y: 38, ax: 0.5, ay: 0.5 },
       'hero-sub': { x: 50, y: 54, ax: 0.5, ay: 0.5 },
@@ -1009,13 +1066,21 @@
     let matterBodies = [];
     let animFrame = null;
     let currentMode = null;
+    let timeWarpActive = false;
+    let entropyInterval = null;
+    let rippleInterval = null;
+    const statusTime = document.getElementById('status-time');
+    const statusDark = document.getElementById('status-dark');
 
     function getFallingElements() {
-      return document.querySelectorAll('.floater, #hero-title, .hud-corner, .status-label, .btn:not(.reset-btn), .planet, .space-fact, .data-label');
+      return document.querySelectorAll('.floater, #hero-title, .hud-corner, .btn:not(.reset-btn), .planet, .space-fact, .data-label');
     }
 
     function createEngine() {
       engine = Engine.create({ gravity: { x: 0, y: 0 } });
+      if (timeWarpActive) {
+        engine.timing.timeScale = 0.25;
+      }
     }
 
     function destroyEngine() {
@@ -1029,41 +1094,23 @@
     function createBodiesForFloaters(customOptions = {}) {
       matterBodies = [];
       const elements = getFallingElements();
-      
       elements.forEach(el => {
         const rect = el.getBoundingClientRect();
         const w = rect.width;
         const h = rect.height;
-        if (w <= 0 || h <= 0) return; // Skip zero-sized elements
-
+        if (w <= 0 || h <= 0) return;
         const cx = rect.left + w / 2;
         const cy = rect.top + h / 2;
-
-        // Cache original style attribute if not already cached
         if (!el.dataset.origStyle) {
           el.dataset.origStyle = el.getAttribute('style') || '';
         }
-
-        // Apply fixed absolute positioning
         el.style.position = 'fixed';
         el.style.left = '0';
         el.style.top = '0';
         el.style.transform = 'none';
-
-        const baseOptions = {
-          restitution: 0.4,
-          friction: 0.3,
-          frictionAir: 0.02,
-          density: 0.001
-        };
-
+        const baseOptions = { restitution: 0.4, friction: 0.3, frictionAir: 0.02, density: 0.001 };
         const options = Object.assign({}, baseOptions, customOptions);
-
-        // Heading is heavy and falls dramatically
-        if (el.id === 'hero-title') {
-          options.density = 0.015;
-        }
-
+        if (el.id === 'hero-title') options.density = 0.015;
         const body = Bodies.rectangle(cx, cy, w, h, options);
         body.element = el;
         body.elWidth = w;
@@ -1077,10 +1124,10 @@
       const w = W(), h = H();
       const thickness = 60;
       const walls = [
-        Bodies.rectangle(w / 2, h + thickness / 2, w + 200, thickness, { isStatic: true }),   // floor
-        Bodies.rectangle(w / 2, -thickness / 2, w + 200, thickness, { isStatic: true }),       // ceiling
-        Bodies.rectangle(-thickness / 2, h / 2, thickness, h + 200, { isStatic: true }),       // left
-        Bodies.rectangle(w + thickness / 2, h / 2, thickness, h + 200, { isStatic: true }),    // right
+        Bodies.rectangle(w / 2, h + thickness / 2, w + 200, thickness, { isStatic: true }),
+        Bodies.rectangle(w / 2, -thickness / 2, w + 200, thickness, { isStatic: true }),
+        Bodies.rectangle(-thickness / 2, h / 2, thickness, h + 200, { isStatic: true }),
+        Bodies.rectangle(w + thickness / 2, h / 2, thickness, h + 200, { isStatic: true }),
       ];
       Composite.add(engine.world, walls);
     }
@@ -1098,6 +1145,18 @@
     }
 
     /* ═══════════════════════════════════════════
+       TIME WARP — slow all Web Animations API anims
+    ═══════════════════════════════════════════ */
+    function applyTimeWarpAnimations() {
+      if (!timeWarpActive) return;
+      if (typeof document.getAnimations === 'function') {
+        document.getAnimations().forEach(anim => {
+          anim.playbackRate = 0.25;
+        });
+      }
+    }
+
+    /* ═══════════════════════════════════════════
        MODE: GRAVITY
     ═══════════════════════════════════════════ */
     function startGravity() {
@@ -1107,16 +1166,13 @@
       createEngine();
       engine.gravity.y = 1.8;
       engine.gravity.x = 0;
-      createBodiesForFloaters({
-        restitution: 0.15,
-        friction: 0.8,
-        frictionAir: 0.03
-      });
+      createBodiesForFloaters({ restitution: 0.15, friction: 0.8, frictionAir: 0.03 });
       addWalls();
 
       function step() {
         Engine.update(engine, 1000 / 60);
         syncDOM();
+        applyTimeWarpAnimations();
         animFrame = requestAnimationFrame(step);
       }
       animFrame = requestAnimationFrame(step);
@@ -1126,24 +1182,20 @@
        MODE: BLACK HOLE
     ═══════════════════════════════════════════ */
     const blackHole = document.getElementById('black-hole');
+    const supernovaFlash = document.getElementById('supernova-flash');
 
     function startBlackHole() {
       stopAllPhysics();
       currentMode = 'blackhole';
       stopDrift();
-      blackHole.style.display = ''; // Make sure display is restored
+      blackHole.style.display = '';
       blackHole.classList.add('active');
       blackHole.style.transform = 'translate(-50%, -50%) scale(1)';
       blackHole.style.opacity = '1';
 
       const cx = W() / 2, cy = H() / 2;
-
       createEngine();
-      createBodiesForFloaters({
-        friction: 0.0,
-        frictionAir: 0.01
-      });
-      // No walls — let things collapse
+      createBodiesForFloaters({ friction: 0.0, frictionAir: 0.01 });
 
       let consumedCount = 0;
       const startTime = performance.now();
@@ -1157,29 +1209,20 @@
           cancelAnimationFrame(animFrame);
           animFrame = null;
 
-          // Force-swallow any remaining elements if timeout hit
           if (matterBodies.length > 0) {
             matterBodies.forEach(b => {
               const el = b.element;
               el.style.transition = 'opacity 0.2s, transform 0.2s';
-              const w = b.elWidth;
-              const h = b.elHeight;
-              const x = b.position.x - w / 2;
-              const y = b.position.y - h / 2;
-              const angle = b.angle;
-              el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad) scale(0)`;
+              const x = b.position.x - b.elWidth / 2;
+              const y = b.position.y - b.elHeight / 2;
+              el.style.transform = `translate(${x}px, ${y}px) rotate(${b.angle}rad) scale(0)`;
               el.style.opacity = '0';
-
-              setTimeout(() => {
-                el.style.display = 'none';
-              }, 200);
-
+              setTimeout(() => { el.style.display = 'none'; }, 200);
               Composite.remove(engine.world, b);
             });
             matterBodies = [];
           }
 
-          // Bright purple flash
           supernovaFlash.style.background = '#7b2fff';
           supernovaFlash.classList.add('flash');
           setTimeout(() => {
@@ -1187,11 +1230,9 @@
             supernovaFlash.style.background = '';
           }, 150);
 
-          // Black hole shrinking transition over 0.5s, then display: none
           blackHole.style.transition = 'transform 0.5s ease-in-out, opacity 0.5s ease-in-out';
           blackHole.style.transform = 'translate(-50%, -50%) scale(0)';
           blackHole.style.opacity = '0';
-
           setTimeout(() => {
             blackHole.classList.remove('active');
             blackHole.style.display = 'none';
@@ -1199,7 +1240,6 @@
             blackHole.style.opacity = '';
             blackHole.style.transition = '';
           }, 500);
-
           return;
         }
 
@@ -1212,49 +1252,29 @@
           if (distance < 80) {
             consumedCount++;
             const el = b.element;
-
-            // Swallowing visual animation (transition 0.2s, display none after 200ms)
             el.style.transition = 'opacity 0.2s, transform 0.2s';
-            const w = b.elWidth;
-            const h = b.elHeight;
-            const x = b.position.x - w / 2;
-            const y = b.position.y - h / 2;
-            const angle = b.angle;
-            el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad) scale(0)`;
+            const x = b.position.x - b.elWidth / 2;
+            const y = b.position.y - b.elHeight / 2;
+            el.style.transform = `translate(${x}px, ${y}px) rotate(${b.angle}rad) scale(0)`;
             el.style.opacity = '0';
-
-            setTimeout(() => {
-              el.style.display = 'none';
-            }, 200);
-
+            setTimeout(() => { el.style.display = 'none'; }, 200);
             Composite.remove(engine.world, b);
             matterBodies.splice(i, 1);
-
-            // Black hole grows and pulses
             blackHole.style.transform = `translate(-50%, -50%) scale(${1 + consumedCount * 0.05})`;
             continue;
           }
 
-          // Force calculation: force = direction * (0.0015 / distance) * (1 + (200 / distance))
           const dirX = dx / distance;
           const dirY = dy / distance;
           const forceMag = (0.0015 / distance) * (1 + (200 / distance));
-
-          Body.applyForce(b, b.position, {
-            x: dirX * forceMag,
-            y: dirY * forceMag
-          });
-
-          // Increase angular velocity by 0.008 every frame
+          Body.applyForce(b, b.position, { x: dirX * forceMag, y: dirY * forceMag });
           Body.setAngularVelocity(b, b.angularVelocity + 0.008);
         }
 
         Engine.update(engine, 1000 / 60);
         syncDOM();
-
-        if (!isCollapsing) {
-          animFrame = requestAnimationFrame(step);
-        }
+        applyTimeWarpAnimations();
+        if (!isCollapsing) animFrame = requestAnimationFrame(step);
       }
       animFrame = requestAnimationFrame(step);
     }
@@ -1262,8 +1282,6 @@
     /* ═══════════════════════════════════════════
        MODE: SUPERNOVA
     ═══════════════════════════════════════════ */
-        const supernovaFlash = document.getElementById('supernova-flash');
-
     function startSupernova() {
       stopAllPhysics();
       currentMode = 'supernova';
@@ -1271,7 +1289,7 @@
 
       const cx = W() / 2, cy = H() / 2;
 
-      // 1. Flash (0ms)
+      // 1. Flash
       const circle = document.getElementById('supernova-circle');
       if (circle) {
         circle.style.display = 'block';
@@ -1282,17 +1300,11 @@
           { width: '0px', height: '0px', opacity: 1 },
           { width: '100vw', height: '100vw', opacity: 1, offset: 0.8 },
           { width: '100vw', height: '100vw', opacity: 0 }
-        ], {
-          duration: 400,
-          easing: 'ease-out',
-          fill: 'forwards'
-        });
-        setTimeout(() => {
-          circle.style.display = 'none';
-        }, 400);
+        ], { duration: 400, easing: 'ease-out', fill: 'forwards' });
+        setTimeout(() => { circle.style.display = 'none'; }, 400);
       }
 
-      // 2. Shockwave ring (200ms)
+      // 2. Shockwave ring
       const ring = document.getElementById('supernova-ring');
       if (ring) {
         setTimeout(() => {
@@ -1303,18 +1315,12 @@
           ring.animate([
             { width: '0px', height: '0px', opacity: 1 },
             { width: '150vw', height: '150vw', opacity: 0 }
-          ], {
-            duration: 1200,
-            easing: 'ease-out',
-            fill: 'forwards'
-          });
+          ], { duration: 1200, easing: 'ease-out', fill: 'forwards' });
         }, 200);
-        setTimeout(() => {
-          ring.style.display = 'none';
-        }, 1400);
+        setTimeout(() => { ring.style.display = 'none'; }, 1400);
       }
 
-      // 3. Afterglow (500ms)
+      // 3. Afterglow
       const glow = document.getElementById('supernova-glow');
       if (glow) {
         setTimeout(() => {
@@ -1324,133 +1330,223 @@
             { opacity: 0 },
             { opacity: 1, offset: 0.25 },
             { opacity: 0 }
-          ], {
-            duration: 2000,
-            easing: 'ease-out',
-            fill: 'forwards'
-          });
+          ], { duration: 2000, easing: 'ease-out', fill: 'forwards' });
         }, 500);
-        setTimeout(() => {
-          glow.style.display = 'none';
-        }, 2500);
+        setTimeout(() => { glow.style.display = 'none'; }, 2500);
       }
 
-      // 4. Elements blast outward (300ms)
+      // 4. Elements blast outward
       const elements = getFallingElements();
       setTimeout(() => {
         elements.forEach(el => {
           if (!el.dataset.origStyle) {
             el.dataset.origStyle = el.getAttribute('style') || '';
           }
-
           const rect = el.getBoundingClientRect();
           const ex = rect.left + rect.width / 2;
           const ey = rect.top + rect.height / 2;
-
           const dx = ex - cx;
           const dy = ey - cy;
           const angle = (dx === 0 && dy === 0) ? Math.random() * Math.PI * 2 : Math.atan2(dy, dx);
-
           const dist = 600 + Math.random() * 600;
           const tx = Math.cos(angle) * dist;
           const ty = Math.sin(angle) * dist;
           const rot = 180 + Math.random() * 540;
-
-          // Staggered delay (0 to 200ms)
           const delay = Math.random() * 200;
 
-          el.style.transition = 'transform 0.8s cubic-bezier(0.2, 0, 1, 0.8), opacity 0.8s';
-          el.style.transitionDelay = `${delay}ms`;
-
-          el.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg)`;
+          el.style.transition = `transform 0.8s cubic-bezier(0.22,1,0.36,1) ${delay}ms, opacity 0.6s ease ${delay}ms`;
+          el.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg) scale(0.3)`;
           el.style.opacity = '0';
-
-          setTimeout(() => {
-            if (currentMode === 'supernova') {
-              el.style.display = 'none';
-            }
-          }, delay + 850);
         });
       }, 300);
+
+      applyTimeWarpAnimations();
     }
 
     /* ═══════════════════════════════════════════
        MODE: TIME WARP
     ═══════════════════════════════════════════ */
-    const statusTime = document.getElementById('status-time');
-
     function startTimeWarp() {
-      stopAllPhysics();
-      currentMode = 'timewarp';
-      universe.classList.add('time-warp');
-      statusTime.classList.add('visible');
+      // If time warp is already active, toggle it off
+      if (timeWarpActive) {
+        clearTimeWarp();
+        currentMode = null;
+        updateActiveBtn(null);
+        return;
+      }
 
-      // Slow down drift animations
+      // Don't stopAllPhysics — time warp is a MODE MODIFIER, not a physics mode
+      // If another physics mode is running, we keep it running but slowed
+      currentMode = 'timewarp';
+      timeWarpActive = true;
+
+
+      // 2. Apply page-wide visual filter (blue tint)
+      document.documentElement.style.filter = 'brightness(0.95) hue-rotate(15deg) saturate(1.2)';
+
+      // 3. Slow all current CSS/Web animations to 0.25x
+      applyTimeWarpAnimations();
+
+      // 4. If a Matter.js engine is running, slow its timeScale
+      if (engine) {
+        engine.timing.timeScale = 0.25;
+      }
+
+      // 5. Slow all CSS animation durations on floater elements (for drift etc.)
       const elements = getFallingElements();
       elements.forEach(el => {
-        if (el.classList.contains('floater')) {
-          el.classList.add('drifting');
-          el.style.animationDuration = '80s';
+        if (el.classList.contains('drifting')) {
+          const computed = getComputedStyle(el);
+          const dur = parseFloat(computed.animationDuration) || 12;
+          el.style.animationDuration = (dur * 4) + 's';
           el.style.animationTimingFunction = 'linear';
         }
+      });
+
+      // 6. Start ripple effect every 3 seconds
+      const ripple = document.getElementById('time-ripple');
+      if (ripple) {
+        ripple.classList.add('active');
+      }
+      if (rippleInterval) clearInterval(rippleInterval);
+      rippleInterval = setInterval(() => {
+        if (!timeWarpActive) return;
+        if (ripple) {
+          ripple.classList.remove('active');
+          void ripple.offsetWidth;
+          ripple.classList.add('active');
+        }
+      }, 3000);
+
+      // 7. Keep the TIME WARP button highlighted
+      updateActiveBtn('timewarp');
+
+      // 8. Continuously slow any new animations that appear
+      // (uses a MutationObserver-like approach via rAF polling)
+      function keepSlowing() {
+        if (!timeWarpActive) return;
+        applyTimeWarpAnimations();
+        requestAnimationFrame(keepSlowing);
+      }
+      requestAnimationFrame(keepSlowing);
+    }
+
+    function clearTimeWarp() {
+      timeWarpActive = false;
+
+      // Remove page filter
+      document.documentElement.style.filter = '';
+
+      // Hide dilation message
+      const msg = document.getElementById('time-dilation-msg');
+      if (msg) msg.classList.remove('active');
+
+      // Stop ripple
+      const ripple = document.getElementById('time-ripple');
+      if (ripple) ripple.classList.remove('active');
+      if (rippleInterval) {
+        clearInterval(rippleInterval);
+        rippleInterval = null;
+      }
+
+      // Restore engine timeScale
+      if (engine) {
+        engine.timing.timeScale = 1;
+      }
+
+      // Restore all animation playback rates
+      if (typeof document.getAnimations === 'function') {
+        document.getAnimations().forEach(anim => {
+          anim.playbackRate = 1;
+        });
+      }
+
+      // Restore CSS animation durations
+      const elements = getFallingElements();
+      elements.forEach(el => {
+        el.style.animationDuration = '';
+        el.style.animationTimingFunction = '';
       });
     }
 
     /* ═══════════════════════════════════════════
        MODE: DARK MATTER
     ═══════════════════════════════════════════ */
-    const statusDark = document.getElementById('status-dark');
-
     function startDarkMatter() {
       stopAllPhysics();
       currentMode = 'darkmatter';
+      stopDrift();
+
       universe.classList.add('dark-matter');
       statusDark.classList.add('visible');
-
-      const elements = getFallingElements();
-      elements.forEach(el => {
-        el.style.opacity = '0.12';
-        if (el.classList.contains('floater')) {
-          el.classList.add('drifting');
-        }
-      });
-    }
-
-    /* ═══════════════════════════════════════════
-       MODE: ENTROPY
-    ═══════════════════════════════════════════ */
-    let entropyInterval = null;
-
-    function startEntropy() {
-      stopAllPhysics();
-      currentMode = 'entropy';
-      stopDrift();
 
       const elements = getFallingElements();
       elements.forEach(el => {
         if (!el.dataset.origStyle) {
           el.dataset.origStyle = el.getAttribute('style') || '';
         }
-        
-        // Each element drifts in random direction
-        const dx = (Math.random() - 0.5) * 600;
-        const dy = (Math.random() - 0.5) * 600;
-        const rot = (Math.random() - 0.5) * 180;
-
-        el.style.transition = 'transform 8s linear, opacity 10s ease';
-
-        // Stagger start
-        setTimeout(() => {
-          el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
-          el.style.opacity = '0.08';
-        }, Math.random() * 2000);
+        // Make elements flicker and become semi-transparent
+        el.style.transition = 'opacity 1.5s ease, transform 1.5s ease';
+        el.style.opacity = String(0.05 + Math.random() * 0.25);
       });
+
+      // Periodically flicker random elements
+      entropyInterval = setInterval(() => {
+        elements.forEach(el => {
+          if (Math.random() < 0.3) {
+            el.style.opacity = String(0.05 + Math.random() * 0.3);
+          }
+        });
+      }, 1200);
+
+      applyTimeWarpAnimations();
     }
 
     /* ═══════════════════════════════════════════
-       RESET
+       MODE: ENTROPY
+    ═══════════════════════════════════════════ */
+    function startEntropy() {
+      stopAllPhysics();
+      currentMode = 'entropy';
+      stopDrift();
+
+      createEngine();
+      createBodiesForFloaters({ restitution: 0.9, friction: 0.01, frictionAir: 0.005 });
+      addWalls();
+
+      // Apply random forces to every body
+      matterBodies.forEach(b => {
+        const fx = (Math.random() - 0.5) * 0.08;
+        const fy = (Math.random() - 0.5) * 0.08;
+        Body.applyForce(b, b.position, { x: fx, y: fy });
+        Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.3);
+      });
+
+      // Keep adding random forces over time
+      entropyInterval = setInterval(() => {
+        matterBodies.forEach(b => {
+          const fx = (Math.random() - 0.5) * 0.02;
+          const fy = (Math.random() - 0.5) * 0.02;
+          Body.applyForce(b, b.position, { x: fx, y: fy });
+        });
+      }, 800);
+
+      function step() {
+        Engine.update(engine, 1000 / 60);
+        syncDOM();
+        applyTimeWarpAnimations();
+        animFrame = requestAnimationFrame(step);
+      }
+      animFrame = requestAnimationFrame(step);
+    }
+
+    /* ═══════════════════════════════════════════
+       RESET ALL
     ═══════════════════════════════════════════ */
     function resetAll() {
+      // Clear time warp mode completely
+      clearTimeWarp();
+
       stopAllPhysics();
       currentMode = null;
 
@@ -1459,6 +1555,7 @@
       statusTime.classList.remove('visible');
       statusDark.classList.remove('visible');
       blackHole.classList.remove('active');
+      blackHole.style.display = '';
       blackHole.style.transform = '';
       blackHole.style.opacity = '';
       blackHole.style.transition = '';
@@ -1472,7 +1569,6 @@
         el.style.animationDuration = '';
         el.style.animationTimingFunction = '';
 
-        // Restore original position styling
         if (el.dataset.origStyle !== undefined) {
           el.setAttribute('style', el.dataset.origStyle);
           delete el.dataset.origStyle;
@@ -1501,6 +1597,19 @@
         }, 900);
       });
 
+      // Re-hide status labels (they got opacity:1 from the generic element reset)
+      statusTime.style.opacity = '';
+      statusDark.style.opacity = '';
+      statusTime.classList.remove('visible');
+      statusDark.classList.remove('visible');
+
+      // Also hide the time dilation message if lingering
+      const dilMsg = document.getElementById('time-dilation-msg');
+      if (dilMsg) {
+        dilMsg.classList.remove('active');
+        dilMsg.style.display = '';
+      }
+
       updateActiveBtn(null);
     }
 
@@ -1512,7 +1621,6 @@
       elements.forEach(el => {
         if (el.classList.contains('floater')) {
           el.classList.remove('drifting');
-          // Compute current transform from animation and freeze
           const computed = getComputedStyle(el);
           const matrix = computed.transform;
           if (matrix && matrix !== 'none') {
@@ -1548,7 +1656,6 @@
       statusTime.classList.remove('visible');
       statusDark.classList.remove('visible');
 
-      // Clear inline transitions/opacity from previous mode
       const elements = getFallingElements();
       elements.forEach(el => {
         el.style.transition = '';
@@ -1556,21 +1663,31 @@
         el.style.display = '';
         el.style.animationDuration = '';
         el.style.animationTimingFunction = '';
-        
-        // Restore styling if switching modes
         if (el.dataset.origStyle !== undefined) {
           el.setAttribute('style', el.dataset.origStyle);
           delete el.dataset.origStyle;
         }
       });
+
+      // Re-apply time warp slow-down if still active
+      if (timeWarpActive) {
+        setTimeout(() => {
+          applyTimeWarpAnimations();
+          document.documentElement.style.filter = 'brightness(0.95) hue-rotate(15deg) saturate(1.2)';
+        }, 50);
+      }
     }
 
     function updateActiveBtn(mode) {
-      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-      if (mode) {
-        const active = document.querySelector(`.btn[data-mode="${mode}"]`);
-        if (active) active.classList.add('active');
-      }
+      document.querySelectorAll('.btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.dataset.mode === 'timewarp' && timeWarpActive) {
+          b.classList.add('active');
+        }
+        if (mode && b.dataset.mode === mode) {
+          b.classList.add('active');
+        }
+      });
     }
 
     /* ═══════════════════════════════════════════
@@ -1581,27 +1698,85 @@
     document.querySelectorAll('.btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const mode = btn.dataset.mode;
+
         if (mode === 'reset') {
           resetAll();
           hudMode.textContent = 'MODE: ZERO-G';
           return;
         }
 
-        // If same mode clicked, reset first
-        if (currentMode === mode) {
-          resetAll();
-          hudMode.textContent = 'MODE: ZERO-G';
+        // Time Warp is special: it's a MODIFIER that stacks with other modes
+        if (mode === 'timewarp') {
+          if (timeWarpActive) {
+            // Toggle off
+            clearTimeWarp();
+            hudMode.textContent = currentMode
+              ? `MODE: ${currentMode.toUpperCase().replace('BLACKHOLE', 'BLACK HOLE').replace('DARKMATTER', 'DARK MATTER')}`
+              : 'MODE: ZERO-G';
+          } else {
+            startTimeWarp();
+            hudMode.textContent = currentMode && currentMode !== 'timewarp'
+              ? `MODE: ${currentMode.toUpperCase().replace('BLACKHOLE', 'BLACK HOLE').replace('DARKMATTER', 'DARK MATTER')} + TIME WARP`
+              : 'MODE: TIME WARP';
+          }
+          updateActiveBtn(currentMode);
           return;
         }
 
+        // If same mode clicked, reset the physics mode (but keep time warp if active)
+        if (currentMode === mode) {
+          stopAllPhysics();
+          currentMode = null;
+          hudMode.textContent = timeWarpActive ? 'MODE: TIME WARP' : 'MODE: ZERO-G';
+          updateActiveBtn(null);
+
+          // Re-position elements
+          const elements = getFallingElements();
+          elements.forEach(el => {
+            el.classList.add('resetting');
+            el.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.5s ease';
+            el.style.opacity = '1';
+            el.style.display = '';
+
+            if (el.dataset.origStyle !== undefined) {
+              el.setAttribute('style', el.dataset.origStyle);
+              delete el.dataset.origStyle;
+            } else {
+              el.style.position = '';
+              el.style.left = '';
+              el.style.top = '';
+              el.style.transform = '';
+            }
+
+            const p = positions[el.id];
+            if (p && el.classList.contains('floater')) {
+              const px = (p.x / 100) * W();
+              const py = (p.y / 100) * H();
+              el.style.left = px + 'px';
+              el.style.top = py + 'px';
+              el.style.transform = `translate(${-p.ax * 100}%, ${-p.ay * 100}%)`;
+            }
+
+            setTimeout(() => {
+              el.classList.remove('resetting');
+              el.style.transition = '';
+              if (el.classList.contains('floater')) {
+                el.classList.add('drifting');
+              }
+            }, 900);
+          });
+          return;
+        }
+
+        // Switch to a new physics mode
         updateActiveBtn(mode);
-        hudMode.textContent = `MODE: ${mode.toUpperCase().replace('BLACKHOLE', 'BLACK HOLE').replace('TIMEWARP', 'TIME WARP').replace('DARKMATTER', 'DARK MATTER')}`;
+        const modeName = mode.toUpperCase().replace('BLACKHOLE', 'BLACK HOLE').replace('DARKMATTER', 'DARK MATTER');
+        hudMode.textContent = timeWarpActive ? `MODE: ${modeName} + TIME WARP` : `MODE: ${modeName}`;
 
         switch (mode) {
           case 'gravity': startGravity(); break;
           case 'blackhole': startBlackHole(); break;
           case 'supernova': startSupernova(); break;
-          case 'timewarp': startTimeWarp(); break;
           case 'darkmatter': startDarkMatter(); break;
           case 'entropy': startEntropy(); break;
         }
@@ -1641,9 +1816,6 @@
     }
     requestAnimationFrame(trackFps);
 
-    /* ═══════════════════════════════════════════
-       TRANSITION OVERLAY CLEANUP
-    ═══════════════════════════════════════════ */
     /* ═══════════════════════════════════════════
        TRANSITION OVERLAY CLEANUP
     ═══════════════════════════════════════════ */
