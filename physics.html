@@ -56,8 +56,8 @@
     html,
     body {
       width: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
+      height: 100%;
+      overflow: hidden;
       background: #0E0E17;
       color: var(--text);
       font-family: var(--font-display);
@@ -65,7 +65,6 @@
       -moz-osx-font-smoothing: grayscale;
       user-select: none;
       cursor: default;
-      scroll-behavior: smooth;
     }
 
     #space-bg {
@@ -631,97 +630,78 @@
     }
 
     /* ═══════════════════════════════════════════
-       SECTION 2: SCROLLABLE PHYSICS CARDS
+       BUTTON BAR — HUD PANEL (GRID LAYOUT)
     ═══════════════════════════════════════════ */
-    #physics-laws {
-      position: relative;
+    #controls {
+      position: fixed;
+      bottom: 4vh;
+      left: 50%;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
       z-index: 10;
-      width: 100%;
-      padding: 10vh 0 15vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8vh;
+      width: fit-content;
     }
 
-    .law-card {
-      width: 90%;
-      max-width: 700px;
-      min-height: 40vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 40px;
-      background: rgba(14, 14, 23, 0.45);
-      border: 1px solid rgba(0, 212, 255, 0.08);
-      border-radius: 12px;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+    .btn {
+      font-family: var(--font-display);
+      font-size: clamp(0.55rem, 0.8vw, 0.75rem);
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      text-shadow: 0 0 8px var(--accent);
       text-align: center;
-      transition: all 0.4s ease;
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.01);
     }
 
-    .law-card:hover {
-      border-color: var(--accent);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.02);
-      background: rgba(14, 14, 23, 0.6);
-      transform: translateY(-4px);
-    }
-
-    .law-btn {
-      font-family: var(--font-display) !important;
-      font-weight: 800 !important;
-      font-size: clamp(1.5rem, 3vw, 2.5rem) !important;
-      padding: 1.2rem 3rem !important;
-      letter-spacing: 0.15em !important;
-      text-transform: uppercase !important;
-      background: transparent !important;
-      border: 2px solid var(--accent) !important;
-      color: var(--accent) !important;
-      cursor: pointer !important;
-      border-radius: 4px !important;
-      transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1) !important;
-      text-shadow: 0 0 12px var(--accent) !important;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.2) !important;
-    }
-
-    .law-btn:hover, .law-btn.active {
-      background: var(--accent) !important;
-      color: #03000f !important;
-      text-shadow: none !important;
-      box-shadow: 0 0 30px var(--accent), inset 0 0 5px rgba(255, 255, 255, 0.3) !important;
-    }
-
-    .law-desc {
-      font-family: var(--font-mono) !important;
-      font-size: clamp(0.9rem, 1.5vw, 1.15rem) !important;
-      color: var(--cyan-glow) !important;
-      opacity: 0.85 !important;
-      line-height: 1.6 !important;
-      max-width: 550px !important;
-      margin-top: 10px !important;
-    }
-
-    .reset-wrap {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      margin-top: 4vh;
-    }
-
-    /* ── SCROLL REVEAL ANIMATION ── */
-    .scroll-reveal {
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
       opacity: 0;
-      transform: translateY(40px);
-      transition: opacity 1.0s cubic-bezier(0.25, 1, 0.5, 1), transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
+      transition: opacity 0.3s ease;
+      border-radius: inherit;
     }
 
-    .scroll-reveal.revealed {
-      opacity: 1;
-      transform: translateY(0);
+    .btn:hover {
+      background: var(--accent);
+      color: #03000f;
+      text-shadow: none;
+      box-shadow: 0 0 15px var(--accent);
+    }
+
+    .btn:hover::before {
+      opacity: 0.08;
+    }
+
+    .btn.active {
+      background: var(--accent);
+      color: #03000f;
+      border-color: var(--accent);
+      box-shadow: 0 0 15px var(--accent);
+      font-weight: 800;
+      text-shadow: none;
+    }
+
+    .btn.active::before {
+      opacity: 0;
+    }
+
+    .btn.reset-btn {
+      grid-column: 1 / -1;
+      justify-self: center;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -814,48 +794,15 @@
     </div>
   </div>
 
-  <!-- SECTION 2: SCROLLABLE PHYSICS LAWS -->
-  <div id="physics-laws">
-    <!-- CARD 1: GRAVITY -->
-    <div class="law-card scroll-reveal" style="--accent: var(--cyan);">
-      <button class="btn law-btn" data-mode="gravity">GRAVITY</button>
-      <div class="law-desc">Every mass pulls every other mass. Nothing escapes.</div>
-    </div>
-
-    <!-- CARD 2: BLACK HOLE -->
-    <div class="law-card scroll-reveal" style="--accent: var(--violet);">
-      <button class="btn law-btn" data-mode="blackhole">BLACK HOLE</button>
-      <div class="law-desc">A point of infinite density. Light itself cannot flee.</div>
-    </div>
-
-    <!-- CARD 3: SUPERNOVA -->
-    <div class="law-card scroll-reveal" style="--accent: #ff6b35;">
-      <button class="btn law-btn" data-mode="supernova">SUPERNOVA</button>
-      <div class="law-desc">A star's final scream. The universe remade in fire.</div>
-    </div>
-
-    <!-- CARD 4: TIME WARP -->
-    <div class="law-card scroll-reveal" style="--accent: #ffcc66;">
-      <button class="btn law-btn" data-mode="timewarp">TIME WARP</button>
-      <div class="law-desc">Gravity bends time. Move fast enough and yesterday becomes tomorrow.</div>
-    </div>
-
-    <!-- CARD 5: DARK MATTER -->
-    <div class="law-card scroll-reveal" style="--accent: #b388ff;">
-      <button class="btn law-btn" data-mode="darkmatter">DARK MATTER</button>
-      <div class="law-desc">It shapes everything. It touches nothing. It cannot be seen.</div>
-    </div>
-
-    <!-- CARD 6: ENTROPY -->
-    <div class="law-card scroll-reveal" style="--accent: #41af2a;">
-      <button class="btn law-btn" data-mode="entropy">ENTROPY</button>
-      <div class="law-desc">Order decays. Chaos wins. Always.</div>
-    </div>
-
-    <!-- RESET BUTTON AT THE BOTTOM -->
-    <div class="reset-wrap scroll-reveal" style="--accent: #f3f8f7;">
-      <button class="btn law-btn reset-btn" data-mode="reset">⟲ RESET SYSTEM</button>
-    </div>
+  <!-- CONTROLS HUD -->
+  <div id="controls">
+    <button class="btn" data-mode="gravity" style="--accent: var(--cyan);">GRAVITY</button>
+    <button class="btn" data-mode="blackhole" style="--accent: var(--violet);">BLACK HOLE</button>
+    <button class="btn" data-mode="supernova" style="--accent: #ff6b35;">SUPERNOVA</button>
+    <button class="btn" data-mode="timewarp" style="--accent: #ffcc66;">TIME WARP</button>
+    <button class="btn" data-mode="darkmatter" style="--accent: #b388ff;">DARK MATTER</button>
+    <button class="btn" data-mode="entropy" style="--accent: #41af2a;">ENTROPY</button>
+    <button class="btn reset-btn" data-mode="reset" style="--accent: #f3f8f7;">⟲ RESET SYSTEM</button>
   </div>
 
   <!-- MATTER.JS CDN -->
@@ -1037,6 +984,10 @@
     let animFrame = null;
     let currentMode = null;
 
+    function getFallingElements() {
+      return document.querySelectorAll('.floater, #hero-title, .hud-corner, .status-label, .btn:not(.reset-btn), .planet, .space-fact, .data-label');
+    }
+
     function createEngine() {
       engine = Engine.create({ gravity: { x: 0, y: 0 } });
     }
@@ -1049,19 +1000,45 @@
       matterBodies = [];
     }
 
-    function createBodiesForFloaters() {
+    function createBodiesForFloaters(customOptions = {}) {
       matterBodies = [];
-      floaters.forEach(el => {
-        const w = el.offsetWidth;
-        const h = el.offsetHeight;
-        const cx = el.offsetLeft + w / 2;
-        const cy = el.offsetTop + h / 2;
-        const body = Bodies.rectangle(cx, cy, w, h, {
+      const elements = getFallingElements();
+      
+      elements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const w = rect.width;
+        const h = rect.height;
+        if (w <= 0 || h <= 0) return; // Skip zero-sized elements
+
+        const cx = rect.left + w / 2;
+        const cy = rect.top + h / 2;
+
+        // Cache original style attribute if not already cached
+        if (!el.dataset.origStyle) {
+          el.dataset.origStyle = el.getAttribute('style') || '';
+        }
+
+        // Apply fixed absolute positioning
+        el.style.position = 'fixed';
+        el.style.left = '0';
+        el.style.top = '0';
+        el.style.transform = 'none';
+
+        const baseOptions = {
           restitution: 0.4,
           friction: 0.3,
           frictionAir: 0.02,
           density: 0.001
-        });
+        };
+
+        const options = Object.assign({}, baseOptions, customOptions);
+
+        // Heading is heavy and falls dramatically
+        if (el.id === 'hero-title') {
+          options.density = 0.015;
+        }
+
+        const body = Bodies.rectangle(cx, cy, w, h, options);
         body.element = el;
         body.elWidth = w;
         body.elHeight = h;
@@ -1085,12 +1062,12 @@
     function syncDOM() {
       matterBodies.forEach(b => {
         const el = b.element;
-        const x = b.position.x - b.elWidth / 2;
-        const y = b.position.y - b.elHeight / 2;
-        const angle = b.angle * (180 / Math.PI);
-        el.style.left = x + 'px';
-        el.style.top = y + 'px';
-        el.style.transform = `rotate(${angle}deg)`;
+        const w = b.elWidth;
+        const h = b.elHeight;
+        const x = b.position.x - w / 2;
+        const y = b.position.y - h / 2;
+        const angle = b.angle;
+        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad)`;
       });
     }
 
@@ -1104,7 +1081,11 @@
       createEngine();
       engine.gravity.y = 1.8;
       engine.gravity.x = 0;
-      createBodiesForFloaters();
+      createBodiesForFloaters({
+        restitution: 0.15,
+        friction: 0.8,
+        frictionAir: 0.03
+      });
       addWalls();
 
       function step() {
@@ -1124,37 +1105,130 @@
       stopAllPhysics();
       currentMode = 'blackhole';
       stopDrift();
+      blackHole.style.display = ''; // Make sure display is restored
       blackHole.classList.add('active');
+      blackHole.style.transform = 'translate(-50%, -50%) scale(1)';
+      blackHole.style.opacity = '1';
 
       const cx = W() / 2, cy = H() / 2;
 
       createEngine();
-      createBodiesForFloaters();
+      createBodiesForFloaters({
+        friction: 0.0,
+        frictionAir: 0.01
+      });
       // No walls — let things collapse
 
+      let consumedCount = 0;
+      const startTime = performance.now();
+      let isCollapsing = false;
+
       function step() {
-        matterBodies.forEach(b => {
+        const elapsed = performance.now() - startTime;
+
+        if (!isCollapsing && (matterBodies.length === 0 || elapsed >= 4000)) {
+          isCollapsing = true;
+          cancelAnimationFrame(animFrame);
+          animFrame = null;
+
+          // Force-swallow any remaining elements if timeout hit
+          if (matterBodies.length > 0) {
+            matterBodies.forEach(b => {
+              const el = b.element;
+              el.style.transition = 'opacity 0.2s, transform 0.2s';
+              const w = b.elWidth;
+              const h = b.elHeight;
+              const x = b.position.x - w / 2;
+              const y = b.position.y - h / 2;
+              const angle = b.angle;
+              el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad) scale(0)`;
+              el.style.opacity = '0';
+
+              setTimeout(() => {
+                el.style.display = 'none';
+              }, 200);
+
+              Composite.remove(engine.world, b);
+            });
+            matterBodies = [];
+          }
+
+          // Bright purple flash
+          supernovaFlash.style.background = '#7b2fff';
+          supernovaFlash.classList.add('flash');
+          setTimeout(() => {
+            supernovaFlash.classList.remove('flash');
+            supernovaFlash.style.background = '';
+          }, 150);
+
+          // Black hole shrinking transition over 0.5s, then display: none
+          blackHole.style.transition = 'transform 0.5s ease-in-out, opacity 0.5s ease-in-out';
+          blackHole.style.transform = 'translate(-50%, -50%) scale(0)';
+          blackHole.style.opacity = '0';
+
+          setTimeout(() => {
+            blackHole.classList.remove('active');
+            blackHole.style.display = 'none';
+            blackHole.style.transform = '';
+            blackHole.style.opacity = '';
+            blackHole.style.transition = '';
+          }, 500);
+
+          return;
+        }
+
+        for (let i = matterBodies.length - 1; i >= 0; i--) {
+          const b = matterBodies[i];
           const dx = cx - b.position.x;
           const dy = cy - b.position.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const strength = Math.min(0.012, 800 / (dist * dist));
+          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+
+          if (distance < 80) {
+            consumedCount++;
+            const el = b.element;
+
+            // Swallowing visual animation (transition 0.2s, display none after 200ms)
+            el.style.transition = 'opacity 0.2s, transform 0.2s';
+            const w = b.elWidth;
+            const h = b.elHeight;
+            const x = b.position.x - w / 2;
+            const y = b.position.y - h / 2;
+            const angle = b.angle;
+            el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad) scale(0)`;
+            el.style.opacity = '0';
+
+            setTimeout(() => {
+              el.style.display = 'none';
+            }, 200);
+
+            Composite.remove(engine.world, b);
+            matterBodies.splice(i, 1);
+
+            // Black hole grows and pulses
+            blackHole.style.transform = `translate(-50%, -50%) scale(${1 + consumedCount * 0.05})`;
+            continue;
+          }
+
+          // Force calculation: force = direction * (0.0015 / distance) * (1 + (200 / distance))
+          const dirX = dx / distance;
+          const dirY = dy / distance;
+          const forceMag = (0.0015 / distance) * (1 + (200 / distance));
+
           Body.applyForce(b, b.position, {
-            x: dx * strength * 0.003,
-            y: dy * strength * 0.003
+            x: dirX * forceMag,
+            y: dirY * forceMag
           });
 
-          // Fade as approaching center
-          const opacity = Math.max(0, Math.min(1, dist / 250));
-          b.element.style.opacity = opacity;
-
-          // Scale down near center
-          const scale = Math.max(0.05, Math.min(1, dist / 200));
-          b.element.style.transform = `rotate(${b.angle * 180 / Math.PI}deg) scale(${scale})`;
-        });
+          // Increase angular velocity by 0.008 every frame
+          Body.setAngularVelocity(b, b.angularVelocity + 0.008);
+        }
 
         Engine.update(engine, 1000 / 60);
         syncDOM();
-        animFrame = requestAnimationFrame(step);
+
+        if (!isCollapsing) {
+          animFrame = requestAnimationFrame(step);
+        }
       }
       animFrame = requestAnimationFrame(step);
     }
@@ -1164,7 +1238,7 @@
     ═══════════════════════════════════════════ */
     const supernovaFlash = document.getElementById('supernova-flash');
 
-    function startSupernova() {
+     function startSupernova() {
       stopAllPhysics();
       currentMode = 'supernova';
       stopDrift();
@@ -1175,7 +1249,12 @@
 
       const cx = W() / 2, cy = H() / 2;
 
-      floaters.forEach(el => {
+      const elements = getFallingElements();
+      elements.forEach(el => {
+        if (!el.dataset.origStyle) {
+          el.dataset.origStyle = el.getAttribute('style') || '';
+        }
+        
         const w = el.offsetWidth;
         const h = el.offsetHeight;
         const ex = el.offsetLeft + w / 2;
@@ -1209,10 +1288,13 @@
       statusTime.classList.add('visible');
 
       // Slow down drift animations
-      floaters.forEach(el => {
-        el.classList.add('drifting');
-        el.style.animationDuration = '80s';
-        el.style.animationTimingFunction = 'linear';
+      const elements = getFallingElements();
+      elements.forEach(el => {
+        if (el.classList.contains('floater')) {
+          el.classList.add('drifting');
+          el.style.animationDuration = '80s';
+          el.style.animationTimingFunction = 'linear';
+        }
       });
     }
 
@@ -1227,9 +1309,12 @@
       universe.classList.add('dark-matter');
       statusDark.classList.add('visible');
 
-      floaters.forEach(el => {
+      const elements = getFallingElements();
+      elements.forEach(el => {
         el.style.opacity = '0.12';
-        el.classList.add('drifting');
+        if (el.classList.contains('floater')) {
+          el.classList.add('drifting');
+        }
       });
     }
 
@@ -1243,8 +1328,12 @@
       currentMode = 'entropy';
       stopDrift();
 
-      floaters.forEach(el => {
-        const rect = el.getBoundingClientRect();
+      const elements = getFallingElements();
+      elements.forEach(el => {
+        if (!el.dataset.origStyle) {
+          el.dataset.origStyle = el.getAttribute('style') || '';
+        }
+        
         // Each element drifts in random direction
         const dx = (Math.random() - 0.5) * 600;
         const dy = (Math.random() - 0.5) * 600;
@@ -1272,16 +1361,32 @@
       statusTime.classList.remove('visible');
       statusDark.classList.remove('visible');
       blackHole.classList.remove('active');
+      blackHole.style.transform = '';
+      blackHole.style.opacity = '';
+      blackHole.style.transition = '';
 
-      floaters.forEach(el => {
+      const elements = getFallingElements();
+      elements.forEach(el => {
         el.classList.add('resetting');
         el.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.5s ease';
         el.style.opacity = '1';
+        el.style.display = '';
         el.style.animationDuration = '';
         el.style.animationTimingFunction = '';
 
+        // Restore original position styling
+        if (el.dataset.origStyle !== undefined) {
+          el.setAttribute('style', el.dataset.origStyle);
+          delete el.dataset.origStyle;
+        } else {
+          el.style.position = '';
+          el.style.left = '';
+          el.style.top = '';
+          el.style.transform = '';
+        }
+
         const p = positions[el.id];
-        if (p) {
+        if (p && el.classList.contains('floater')) {
           const px = (p.x / 100) * W();
           const py = (p.y / 100) * H();
           el.style.left = px + 'px';
@@ -1292,7 +1397,9 @@
         setTimeout(() => {
           el.classList.remove('resetting');
           el.style.transition = '';
-          el.classList.add('drifting');
+          if (el.classList.contains('floater')) {
+            el.classList.add('drifting');
+          }
         }, 900);
       });
 
@@ -1303,13 +1410,16 @@
        HELPERS
     ═══════════════════════════════════════════ */
     function stopDrift() {
-      floaters.forEach(el => {
-        el.classList.remove('drifting');
-        // Compute current transform from animation and freeze
-        const computed = getComputedStyle(el);
-        const matrix = computed.transform;
-        if (matrix && matrix !== 'none') {
-          el.style.transform = matrix;
+      const elements = getFallingElements();
+      elements.forEach(el => {
+        if (el.classList.contains('floater')) {
+          el.classList.remove('drifting');
+          // Compute current transform from animation and freeze
+          const computed = getComputedStyle(el);
+          const matrix = computed.transform;
+          if (matrix && matrix !== 'none') {
+            el.style.transform = matrix;
+          }
         }
       });
     }
@@ -1325,16 +1435,27 @@
       }
       destroyEngine();
       blackHole.classList.remove('active');
+      blackHole.style.transform = '';
+      blackHole.style.opacity = '';
+      blackHole.style.transition = '';
       universe.classList.remove('time-warp', 'dark-matter');
       statusTime.classList.remove('visible');
       statusDark.classList.remove('visible');
 
       // Clear inline transitions/opacity from previous mode
-      floaters.forEach(el => {
+      const elements = getFallingElements();
+      elements.forEach(el => {
         el.style.transition = '';
         el.style.opacity = '';
+        el.style.display = '';
         el.style.animationDuration = '';
         el.style.animationTimingFunction = '';
+        
+        // Restore styling if switching modes
+        if (el.dataset.origStyle !== undefined) {
+          el.setAttribute('style', el.dataset.origStyle);
+          delete el.dataset.origStyle;
+        }
       });
     }
 
@@ -1418,7 +1539,7 @@
        TRANSITION OVERLAY CLEANUP
     ═══════════════════════════════════════════ */
     /* ═══════════════════════════════════════════
-       TRANSITION OVERLAY CLEANUP & HERO CLICK
+       TRANSITION OVERLAY CLEANUP
     ═══════════════════════════════════════════ */
     function hideOverlay() {
       const overlay = document.getElementById('transition-overlay');
@@ -1432,30 +1553,6 @@
     } else {
       hideOverlay();
     }
-
-    // Scroll down to physics laws when clicking the hero title
-    const heroTitle = document.getElementById('hero-title');
-    if (heroTitle) {
-      heroTitle.addEventListener('click', () => {
-        const target = document.getElementById('physics-laws');
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    }
-
-    /* ═══════════════════════════════════════════
-       SCROLL REVEAL OBSERVER
-    ═══════════════════════════════════════════ */
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('revealed');
-        }
-      });
-    }, { threshold: 0.15 });
-
-    document.querySelectorAll('.scroll-reveal').forEach(el => revealObserver.observe(el));
   </script>
 </body>
 
