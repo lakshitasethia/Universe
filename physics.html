@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THE UNIVERSE — Interactive Space Physics</title>
+  <meta name="description"
+    content="An interactive space physics experience where you control the laws of the universe. Gravity, black holes, supernovas — you decide.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    @font-face {
+      font-family: 'Nexokora';
+      src: url('./nexokora-techno/NexokoraTechno-Regular.otf') format('opentype');
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESET & FOUNDATION
+    ═══════════════════════════════════════════ */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-deep: #03000f;
+      --bg-panel: rgba(3, 0, 15, 0.75);
+      --cyan: #00d4ff;
+      --cyan-dim: rgba(0, 212, 255, 0.15);
+      --cyan-glow: rgba(0, 212, 255, 0.4);
+      --violet: #7b2fff;
+      --violet-glow: rgba(123, 47, 255, 0.5);
+      --orange: #ff6b35;
+      --text: #e8e8ff;
+      --text-muted: rgba(232, 232, 255, 0.4);
+      --font-display: 'Orbitron', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @view-transition {
+        navigation: auto;
+      }
+    }
+
+    html,
+    body {
+      width: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: #0E0E17;
+      color: var(--text);
+      font-family: var(--font-display);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+      cursor: default;
+      scroll-behavior: smooth;
+    }
+
+    #space-bg {
+      position: fixed;
+      inset: 0;
+      background: #0E0E17;
+      z-index: -1;
+    }
+
+    #starfield {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    /* ═══════════════════════════════════════════
+       ATMOSPHERIC DEPTH LAYERS
+    ═══════════════════════════════════════════ */
+    #nebula-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 80%, rgba(123, 47, 255, 0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 85% 20%, rgba(0, 212, 255, 0.03) 0%, transparent 60%),
+        radial-gradient(ellipse 120% 80% at 50% 50%, rgba(3, 0, 30, 0.5) 0%, transparent 70%);
+    }
+
+    #vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.6) 100%);
+    }
+
+    /* ═══════════════════════════════════════════
+       FLOATING UNIVERSE CONTAINER
+    ═══════════════════════════════════════════ */
+    #universe {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      z-index: 5;
+      overflow: hidden;
+      transition: filter 1.2s ease, opacity 0.8s ease;
+    }
+
+    #universe.time-warp {
+      filter: blur(1.5px) hue-rotate(40deg) saturate(1.3);
+    }
+
+    #universe.dark-matter {
+      filter: brightness(0.3) contrast(1.2);
+    }
+
+    /* ═══════════════════════════════════════════
+       FLOATING ELEMENTS — BASE STYLE
+    ═══════════════════════════════════════════ */
+    .floater {
+      position: absolute;
+      white-space: nowrap;
+      pointer-events: none;
+      will-change: transform, opacity;
+      transition: opacity 0.6s ease;
+    }
+
+    .floater.resetting {
+      transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.6s ease;
+    }
+
+    /* Zero-G drift animation */
+    @keyframes zero-g {
+      0% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+
+      25% {
+        transform: translate(6px, -10px) rotate(0.5deg);
+      }
+
+      50% {
+        transform: translate(-4px, -18px) rotate(-0.3deg);
+      }
+
+      75% {
+        transform: translate(8px, -8px) rotate(0.7deg);
+      }
+
+      100% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+    }
+
+    .floater.drifting {
+      animation: zero-g var(--drift-duration, 12s) ease-in-out infinite;
+      animation-delay: var(--drift-delay, 0s);
+    }
+
+    /* ═══════════════════════════════════════════
+       NEON OUTLINED TEXT — SIMONE-DEV STYLE
+    ═══════════════════════════════════════════ */
+    .neon-outline {
+      font-family: var(--font-display);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: transparent;
+      -webkit-text-stroke: 1px var(--cyan);
+      text-shadow:
+        0 0 7px var(--cyan-glow),
+        0 0 20px rgba(0, 212, 255, 0.15),
+        0 0 40px rgba(0, 212, 255, 0.05);
+    }
+
+    .neon-solid {
+      font-family: var(--font-display);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      text-shadow:
+        0 0 8px var(--cyan-glow),
+        0 0 25px rgba(0, 212, 255, 0.2);
+    }
+
+    /* ═══════════════════════════════════════════
+       HERO TEXT
+    ═══════════════════════════════════════════ */
+    .hero-title {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Nexokora', sans-serif;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 1.5px #5ef6ff;
+      text-shadow: 0 0 8px rgba(94, 246, 255, 0.6), 0 0 20px rgba(94, 246, 255, 0.3), 0 0 40px rgba(94, 246, 255, 0.1);
+      font-size: clamp(2.5rem, 6vw, 5.5rem);
+      text-align: center;
+      line-height: 1;
+      pointer-events: auto;
+      cursor: pointer;
+      z-index: 5;
+      white-space: normal;
+      width: 90vw;
+      max-width: 90vw;
+    }
+
+    .hero-sub {
+      font-family: var(--font-mono);
+      font-size: clamp(0.7rem, 1.4vw, 1rem);
+      letter-spacing: 0.35em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* Planet names — outlined + colored glow */
+    .planet {
+      font-size: clamp(1rem, 2.8vw, 2.2rem);
+      -webkit-text-stroke: 1px var(--planet-color, var(--cyan));
+      text-shadow:
+        0 0 12px var(--planet-glow, var(--cyan-glow)),
+        0 0 30px var(--planet-glow, rgba(0, 212, 255, 0.1));
+    }
+
+    /* Data labels */
+    .data-label {
+      font-family: var(--font-mono);
+      font-size: clamp(0.6rem, 1vw, 0.8rem);
+      font-weight: 400;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 0 6px rgba(0, 212, 255, 0.1);
+    }
+
+    .space-fact {
+      font-family: var(--font-mono);
+      font-size: clamp(0.65rem, 1.1vw, 0.85rem);
+      font-weight: 700;
+      color: rgba(0, 212, 255, 0.55);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════════════════════════════════════
+       BLACK HOLE VISUAL
+    ═══════════════════════════════════════════ */
+    #black-hole {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, #000 30%, rgba(123, 47, 255, 0.6) 60%, transparent 72%);
+      box-shadow:
+        0 0 60px 20px rgba(123, 47, 255, 0.4),
+        0 0 120px 40px rgba(123, 47, 255, 0.15),
+        inset 0 0 40px 10px rgba(0, 0, 0, 0.9);
+      transform: translate(-50%, -50%);
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      transition: width 0.8s ease, height 0.8s ease, opacity 0.5s ease;
+    }
+
+    #black-hole.active {
+      width: 120px;
+      height: 120px;
+      opacity: 1;
+    }
+
+    @keyframes bh-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 60px 20px rgba(123, 47, 255, 0.4), 0 0 120px 40px rgba(123, 47, 255, 0.15), inset 0 0 40px 10px rgba(0, 0, 0, 0.9);
+      }
+
+      50% {
+        box-shadow: 0 0 80px 30px rgba(123, 47, 255, 0.6), 0 0 160px 50px rgba(123, 47, 255, 0.25), inset 0 0 50px 15px rgba(0, 0, 0, 0.95);
+      }
+    }
+
+    #black-hole.active {
+      animation: bh-pulse 2s ease-in-out infinite;
+    }
+
+    /* Accretion disk ring */
+    #black-hole::before {
+      content: '';
+      position: absolute;
+      inset: -30px;
+      border-radius: 50%;
+      border: 1px solid rgba(123, 47, 255, 0.3);
+      animation: bh-ring-spin 4s linear infinite;
+    }
+
+    #black-hole::after {
+      content: '';
+      position: absolute;
+      inset: -55px;
+      border-radius: 50%;
+      border: 1px solid rgba(123, 47, 255, 0.12);
+      animation: bh-ring-spin 7s linear infinite reverse;
+    }
+
+    @keyframes bh-ring-spin {
+      from {
+        transform: rotate(0deg) scaleY(0.4);
+      }
+
+      to {
+        transform: rotate(360deg) scaleY(0.4);
+      }
+    }
+
+    /* ═══════════════════════════════════════════
+       SUPERNOVA FLASH
+    ═══════════════════════════════════════════ */
+    #supernova-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      background: white;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.08s ease;
+    }
+
+    #supernova-flash.flash {
+      opacity: 0.85;
+    }
+
+    /* ═══════════════════════════════════════════
+       STATUS LABELS (TIME WARP / DARK MATTER)
+    ═══════════════════════════════════════════ */
+    .status-label {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      padding: 8px 24px;
+      border: 1px solid var(--cyan-dim);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan-glow);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+
+    .status-label.visible {
+      opacity: 1;
+    }
+
+    .status-label.violet {
+      color: var(--violet);
+      border-color: rgba(123, 47, 255, 0.3);
+      text-shadow: 0 0 10px var(--violet-glow);
+    }
+
+    /* ═══════════════════════════════════════════
+       SCAN LINE OVERLAY (subtle CRT nod)
+    ═══════════════════════════════════════════ */
+    #scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg,
+          transparent 0px,
+          transparent 3px,
+          rgba(0, 0, 0, 0.03) 3px,
+          rgba(0, 0, 0, 0.03) 4px);
+      opacity: 0.4;
+    }
+
+    /* ═══════════════════════════════════════════
+       BUTTON BAR — HUD PANEL
+    ═══════════════════════════════════════════ */
+    #controls {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 28px 20px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px) saturate(1.4);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 14px 14px 0 0;
+      flex-wrap: wrap;
+    }
+
+    /* Subtle top-glow accent line */
+    #controls::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 20%;
+      right: 20%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan-glow), transparent);
+    }
+
+    .btn {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      background: transparent;
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 100px;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--cyan);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: inherit;
+    }
+
+    .btn:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.2), 0 0 30px rgba(0, 212, 255, 0.05);
+      transform: scale(1.05);
+    }
+
+    .btn:hover::before {
+      opacity: 0.08;
+    }
+
+    .btn.active {
+      background: var(--cyan);
+      color: #03000f;
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px var(--cyan-glow), 0 0 40px rgba(0, 212, 255, 0.15);
+      font-weight: 800;
+    }
+
+    .btn.active::before {
+      opacity: 0;
+    }
+
+    .btn.reset-btn {
+      border-color: rgba(232, 232, 255, 0.15);
+      color: var(--text-muted);
+    }
+
+    .btn.reset-btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+      box-shadow: 0 0 15px rgba(232, 232, 255, 0.1);
+    }
+
+    /* ═══════════════════════════════════════════
+       CORNER HUD DECORATIONS
+    ═══════════════════════════════════════════ */
+    .hud-corner {
+      position: absolute;
+      z-index: 10;
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      color: rgba(0, 212, 255, 0.18);
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .hud-tl {
+      top: 20px;
+      left: 24px;
+    }
+
+    .hud-tr {
+      top: 20px;
+      right: 24px;
+      text-align: right;
+    }
+
+    .hud-bl {
+      bottom: 90px;
+      left: 24px;
+    }
+
+    .hud-br {
+      bottom: 90px;
+      right: 24px;
+      text-align: right;
+    }
+
+    .hud-corner .hud-line {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Corner bracket marks — simone-dev inspired */
+    .hud-tl::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: -8px;
+      width: 16px;
+      height: 16px;
+      border-top: 1px solid rgba(0, 212, 255, 0.12);
+      border-left: 1px solid rgba(0, 212, 255, 0.12);
+    }
+
+    .hud-tr::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      width: 16px;
+      height: 16px;
+      border-top: 1px solid rgba(0, 212, 255, 0.12);
+      border-right: 1px solid rgba(0, 212, 255, 0.12);
+    }
+
+    .hud-bl::before {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: -8px;
+      width: 16px;
+      height: 16px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+      border-left: 1px solid rgba(0, 212, 255, 0.12);
+    }
+
+    .hud-br::before {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      right: -8px;
+      width: 16px;
+      height: 16px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+      border-right: 1px solid rgba(0, 212, 255, 0.12);
+    }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      #controls {
+        gap: 6px;
+        padding: 12px 16px 16px;
+      }
+
+      .btn {
+        font-size: 0.55rem;
+        padding: 8px 14px;
+        letter-spacing: 0.1em;
+      }
+
+      .hero-title {
+        -webkit-text-stroke: 1px var(--cyan);
+      }
+
+      .hud-corner {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .btn {
+        font-size: 0.5rem;
+        padding: 7px 11px;
+      }
+
+      #controls {
+        gap: 5px;
+        padding: 10px 10px 14px;
+      }
+    }
+
+    #transition-overlay {
+      position: fixed;
+      inset: 0;
+      background: #0E0E17;
+      opacity: 1;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+    #transition-overlay.fade-out {
+      opacity: 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       SECTION 2: SCROLLABLE PHYSICS CARDS
+    ═══════════════════════════════════════════ */
+    #physics-laws {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      padding: 10vh 0 15vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8vh;
+    }
+
+    .law-card {
+      width: 90%;
+      max-width: 700px;
+      min-height: 40vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px;
+      background: rgba(14, 14, 23, 0.45);
+      border: 1px solid rgba(0, 212, 255, 0.08);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      text-align: center;
+      transition: all 0.4s ease;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.01);
+    }
+
+    .law-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.02);
+      background: rgba(14, 14, 23, 0.6);
+      transform: translateY(-4px);
+    }
+
+    .law-btn {
+      font-family: var(--font-display) !important;
+      font-weight: 800 !important;
+      font-size: clamp(1.5rem, 3vw, 2.5rem) !important;
+      padding: 1.2rem 3rem !important;
+      letter-spacing: 0.15em !important;
+      text-transform: uppercase !important;
+      background: transparent !important;
+      border: 2px solid var(--accent) !important;
+      color: var(--accent) !important;
+      cursor: pointer !important;
+      border-radius: 4px !important;
+      transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1) !important;
+      text-shadow: 0 0 12px var(--accent) !important;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .law-btn:hover, .law-btn.active {
+      background: var(--accent) !important;
+      color: #03000f !important;
+      text-shadow: none !important;
+      box-shadow: 0 0 30px var(--accent), inset 0 0 5px rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .law-desc {
+      font-family: var(--font-mono) !important;
+      font-size: clamp(0.9rem, 1.5vw, 1.15rem) !important;
+      color: var(--cyan-glow) !important;
+      opacity: 0.85 !important;
+      line-height: 1.6 !important;
+      max-width: 550px !important;
+      margin-top: 10px !important;
+    }
+
+    .reset-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-top: 4vh;
+    }
+
+    /* ── SCROLL REVEAL ANIMATION ── */
+    .scroll-reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 1.0s cubic-bezier(0.25, 1, 0.5, 1), transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .scroll-reveal.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="transition-overlay"></div>
+  <div id="space-bg"></div>
+  <canvas id="starfield"></canvas>
+
+  <!-- ATMOSPHERIC LAYERS -->
+  <div id="nebula-layer"></div>
+  <div id="vignette"></div>
+  <div id="scanlines"></div>
+
+  <!-- FLOATING UNIVERSE -->
+  <div id="universe">
+    <!-- BLACK HOLE -->
+    <div id="black-hole"></div>
+
+    <!-- SUPERNOVA FLASH -->
+    <div id="supernova-flash"></div>
+
+    <!-- STATUS LABELS -->
+    <div id="status-time" class="status-label">⏱ TIME DILATION ACTIVE</div>
+    <div id="status-dark" class="status-label violet">◉ DARK MATTER DETECTED</div>
+
+    <!-- HUD CORNERS -->
+    <div class="hud-corner hud-tl">
+      <span class="hud-line">SYS://UNIVERSE.CTRL</span>
+      <span class="hud-line">STATUS: ONLINE</span>
+      <span class="hud-line" id="hud-mode">MODE: ZERO-G</span>
+    </div>
+    <div class="hud-corner hud-tr">
+      <span class="hud-line" id="hud-fps">60 FPS</span>
+      <span class="hud-line">PHYSICS: MATTER.JS</span>
+      <span class="hud-line" id="hud-bodies">BODIES: 20</span>
+    </div>
+    <div class="hud-corner hud-bl">
+      <span class="hud-line">SECTOR: MILKY WAY</span>
+      <span class="hud-line">QUADRANT: α-7</span>
+    </div>
+    <div class="hud-corner hud-br">
+      <span class="hud-line" id="hud-time"></span>
+      <span class="hud-line">LAT: 00.0000</span>
+    </div>
+
+    <!-- Hero -->
+    <div class="neon-outline hero-title" id="hero-title">THE UNIVERSE<br>OBEYS YOU</div>
+    <div class="floater drifting hero-sub" id="hero-sub" style="--drift-duration:15s; --drift-delay:1s;">— CHOOSE A LAW —</div>
+
+    <!-- Planets -->
+    <div class="floater drifting neon-outline planet" id="p-mercury"
+      style="--planet-color:#b0b0b0; --planet-glow:rgba(176,176,176,0.3); --drift-duration:10s; --drift-delay:0.5s;">
+      MERCURY</div>
+    <div class="floater drifting neon-outline planet" id="p-venus"
+      style="--planet-color:#ffcc66; --planet-glow:rgba(255,204,102,0.3); --drift-duration:13s; --drift-delay:1.2s;">
+      VENUS</div>
+    <div class="floater drifting neon-outline planet" id="p-earth"
+      style="--planet-color:#4fc3f7; --planet-glow:rgba(79,195,247,0.35); --drift-duration:11s; --drift-delay:0.8s;">
+      EARTH</div>
+    <div class="floater drifting neon-outline planet" id="p-mars"
+      style="--planet-color:#ef5350; --planet-glow:rgba(239,83,80,0.3); --drift-duration:14s; --drift-delay:2s;">MARS
+    </div>
+    <div class="floater drifting neon-outline planet" id="p-jupiter"
+      style="--planet-color:#ffab40; --planet-glow:rgba(255,171,64,0.3); --drift-duration:16s; --drift-delay:0.3s;">
+      JUPITER</div>
+    <div class="floater drifting neon-outline planet" id="p-saturn"
+      style="--planet-color:#ffe082; --planet-glow:rgba(255,224,130,0.3); --drift-duration:19s; --drift-delay:1.8s;">
+      SATURN</div>
+    <div class="floater drifting neon-outline planet" id="p-neptune"
+      style="--planet-color:#5c6bc0; --planet-glow:rgba(92,107,192,0.35); --drift-duration:20s; --drift-delay:2.5s;">
+      NEPTUNE</div>
+
+    <!-- Space facts -->
+    <div class="floater drifting space-fact" id="fact-1" style="--drift-duration:9s; --drift-delay:0.4s;">4.6 BILLION
+      YEARS</div>
+    <div class="floater drifting space-fact" id="fact-2" style="--drift-duration:12s; --drift-delay:1.5s;">299,792 KM/S
+    </div>
+    <div class="floater drifting space-fact" id="fact-3" style="--drift-duration:11s; --drift-delay:0.9s;">13.8 BLY AGE
+    </div>
+    <div class="floater drifting space-fact" id="fact-4" style="--drift-duration:14s; --drift-delay:2.2s;">∞ EXPANDING
+    </div>
+
+    <!-- Coordinate labels -->
+    <div class="floater drifting data-label" id="coord-1" style="--drift-duration:17s; --drift-delay:0.6s;">RA 17h 45m
+    </div>
+    <div class="floater drifting data-label" id="coord-2" style="--drift-duration:13s; --drift-delay:1.1s;">DEC −29°
+    </div>
+    <div class="floater drifting data-label" id="coord-3" style="--drift-duration:15s; --drift-delay:1.9s;">Z = 0.0003
+    </div>
+  </div>
+
+  <!-- SECTION 2: SCROLLABLE PHYSICS LAWS -->
+  <div id="physics-laws">
+    <!-- CARD 1: GRAVITY -->
+    <div class="law-card scroll-reveal" style="--accent: var(--cyan);">
+      <button class="btn law-btn" data-mode="gravity">GRAVITY</button>
+      <div class="law-desc">Every mass pulls every other mass. Nothing escapes.</div>
+    </div>
+
+    <!-- CARD 2: BLACK HOLE -->
+    <div class="law-card scroll-reveal" style="--accent: var(--violet);">
+      <button class="btn law-btn" data-mode="blackhole">BLACK HOLE</button>
+      <div class="law-desc">A point of infinite density. Light itself cannot flee.</div>
+    </div>
+
+    <!-- CARD 3: SUPERNOVA -->
+    <div class="law-card scroll-reveal" style="--accent: #ff6b35;">
+      <button class="btn law-btn" data-mode="supernova">SUPERNOVA</button>
+      <div class="law-desc">A star's final scream. The universe remade in fire.</div>
+    </div>
+
+    <!-- CARD 4: TIME WARP -->
+    <div class="law-card scroll-reveal" style="--accent: #ffcc66;">
+      <button class="btn law-btn" data-mode="timewarp">TIME WARP</button>
+      <div class="law-desc">Gravity bends time. Move fast enough and yesterday becomes tomorrow.</div>
+    </div>
+
+    <!-- CARD 5: DARK MATTER -->
+    <div class="law-card scroll-reveal" style="--accent: #b388ff;">
+      <button class="btn law-btn" data-mode="darkmatter">DARK MATTER</button>
+      <div class="law-desc">It shapes everything. It touches nothing. It cannot be seen.</div>
+    </div>
+
+    <!-- CARD 6: ENTROPY -->
+    <div class="law-card scroll-reveal" style="--accent: #41af2a;">
+      <button class="btn law-btn" data-mode="entropy">ENTROPY</button>
+      <div class="law-desc">Order decays. Chaos wins. Always.</div>
+    </div>
+
+    <!-- RESET BUTTON AT THE BOTTOM -->
+    <div class="reset-wrap scroll-reveal" style="--accent: #f3f8f7;">
+      <button class="btn law-btn reset-btn" data-mode="reset">⟲ RESET SYSTEM</button>
+    </div>
+  </div>
+
+  <!-- MATTER.JS CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+
+  <script>
+    /* ═══════════ STARS ═══════════ */
+    const starCanvas = document.getElementById('starfield');
+    const renderer = new THREE.WebGLRenderer({
+      canvas: starCanvas,
+      alpha: true,
+      antialias: false
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.z = 500;
+
+    // Create circular star texture
+    const texCanvas = document.createElement('canvas');
+    texCanvas.width = 32; texCanvas.height = 32;
+    const ctx = texCanvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.7, 'rgba(255,255,255,0.85)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 32, 32);
+    const starTexture = new THREE.CanvasTexture(texCanvas);
+
+    const colorsList = [
+      new THREE.Color('#ffffff'),
+      new THREE.Color('#ffffff'),
+      new THREE.Color('#aaddff'),
+      new THREE.Color('#cceeff'),
+      new THREE.Color('#ffffff'),
+      new THREE.Color('#e8f4ff')
+    ];
+
+    // 1. Dynamic Stars (1500 stars)
+    const dynamicCount = 1500;
+    const dynamicGeometry = new THREE.BufferGeometry();
+    const dynamicPositions = new Float32Array(dynamicCount * 3);
+    const dynamicColors = new Float32Array(dynamicCount * 3);
+
+    for (let i = 0; i < dynamicCount; i++) {
+      dynamicPositions[i * 3] = (Math.random() - 0.5) * 2000;
+      dynamicPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+      dynamicPositions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+
+      const color = colorsList[Math.floor(Math.random() * colorsList.length)];
+      dynamicColors[i * 3] = color.r;
+      dynamicColors[i * 3 + 1] = color.g;
+      dynamicColors[i * 3 + 2] = color.b;
+    }
+
+    dynamicGeometry.setAttribute('position', new THREE.BufferAttribute(dynamicPositions, 3));
+    dynamicGeometry.setAttribute('color', new THREE.BufferAttribute(dynamicColors, 3));
+
+    const dynamicMaterial = new THREE.PointsMaterial({
+      size: 6.0,
+      map: starTexture,
+      transparent: true,
+      opacity: 0.95,
+      sizeAttenuation: true,
+      vertexColors: true,
+      depthWrite: false
+    });
+
+    const dynamicStars = new THREE.Points(dynamicGeometry, dynamicMaterial);
+    scene.add(dynamicStars);
+
+    // 2. Static Stars (3500 stars)
+    const staticCount = 3500;
+    const staticGeometry = new THREE.BufferGeometry();
+    const staticPositions = new Float32Array(staticCount * 3);
+    const staticColors = new Float32Array(staticCount * 3);
+
+    for (let i = 0; i < staticCount; i++) {
+      staticPositions[i * 3] = (Math.random() - 0.5) * 2000;
+      staticPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+      staticPositions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+
+      const color = colorsList[Math.floor(Math.random() * colorsList.length)];
+      staticColors[i * 3] = color.r;
+      staticColors[i * 3 + 1] = color.g;
+      staticColors[i * 3 + 2] = color.b;
+    }
+
+    staticGeometry.setAttribute('position', new THREE.BufferAttribute(staticPositions, 3));
+    staticGeometry.setAttribute('color', new THREE.BufferAttribute(staticColors, 3));
+
+    const staticMaterial = new THREE.PointsMaterial({
+      size: 4.0,
+      map: starTexture,
+      transparent: true,
+      opacity: 0.85,
+      sizeAttenuation: true,
+      vertexColors: true,
+      depthWrite: false
+    });
+
+    const staticStars = new THREE.Points(staticGeometry, staticMaterial);
+    scene.add(staticStars);
+
+    // Very subtle drift animation
+    function animateStars() {
+      requestAnimationFrame(animateStars);
+      dynamicStars.rotation.y += 0.00005;
+      dynamicStars.rotation.x += 0.00002;
+      renderer.render(scene, camera);
+    }
+    animateStars();
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* ═══════════════════════════════════════════
+       ELEMENT POSITIONING
+    ═══════════════════════════════════════════ */
+    const floaters = document.querySelectorAll('.floater');
+    const universe = document.getElementById('universe');
+    const W = () => window.innerWidth;
+    const H = () => window.innerHeight;
+
+    // Predefined positions (% of viewport)
+    const positions = {
+      'hero-title': { x: 50, y: 38, ax: 0.5, ay: 0.5 },
+      'hero-sub': { x: 50, y: 54, ax: 0.5, ay: 0.5 },
+      'p-mercury': { x: 8, y: 15, ax: 0, ay: 0 },
+      'p-venus': { x: 82, y: 12, ax: 1, ay: 0 },
+      'p-earth': { x: 15, y: 72, ax: 0, ay: 1 },
+      'p-mars': { x: 88, y: 65, ax: 1, ay: 1 },
+      'p-jupiter': { x: 72, y: 35, ax: 1, ay: 0.5 },
+      'p-saturn': { x: 25, y: 28, ax: 0, ay: 0.5 },
+      'p-neptune': { x: 60, y: 75, ax: 0.5, ay: 1 },
+      'fact-1': { x: 18, y: 50, ax: 0, ay: 0.5 },
+      'fact-2': { x: 78, y: 82, ax: 1, ay: 1 },
+      'fact-3': { x: 65, y: 18, ax: 0.5, ay: 0 },
+      'fact-4': { x: 35, y: 85, ax: 0, ay: 1 },
+      'coord-1': { x: 92, y: 45, ax: 1, ay: 0.5 },
+      'coord-2': { x: 5, y: 90, ax: 0, ay: 1 },
+      'coord-3': { x: 48, y: 8, ax: 0.5, ay: 0 },
+    };
+
+    function positionElements() {
+      floaters.forEach(el => {
+        const p = positions[el.id];
+        if (!p) return;
+        const px = (p.x / 100) * W();
+        const py = (p.y / 100) * H();
+        el.style.left = px + 'px';
+        el.style.top = py + 'px';
+        el.style.transform = `translate(${-p.ax * 100}%, ${-p.ay * 100}%)`;
+        el.dataset.ox = px;
+        el.dataset.oy = py;
+        el.dataset.ax = p.ax;
+        el.dataset.ay = p.ay;
+      });
+    }
+
+    positionElements();
+    window.addEventListener('resize', () => {
+      if (currentMode === null) positionElements();
+    });
+
+    /* ═══════════════════════════════════════════
+       MATTER.JS SETUP
+    ═══════════════════════════════════════════ */
+    const { Engine, World, Bodies, Body, Events, Runner, Composite } = Matter;
+    let engine, runner;
+    let matterBodies = [];
+    let animFrame = null;
+    let currentMode = null;
+
+    function createEngine() {
+      engine = Engine.create({ gravity: { x: 0, y: 0 } });
+    }
+
+    function destroyEngine() {
+      if (engine) {
+        Composite.clear(engine.world, false);
+        Engine.clear(engine);
+      }
+      matterBodies = [];
+    }
+
+    function createBodiesForFloaters() {
+      matterBodies = [];
+      floaters.forEach(el => {
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        const cx = el.offsetLeft + w / 2;
+        const cy = el.offsetTop + h / 2;
+        const body = Bodies.rectangle(cx, cy, w, h, {
+          restitution: 0.4,
+          friction: 0.3,
+          frictionAir: 0.02,
+          density: 0.001
+        });
+        body.element = el;
+        body.elWidth = w;
+        body.elHeight = h;
+        matterBodies.push(body);
+        Composite.add(engine.world, body);
+      });
+    }
+
+    function addWalls() {
+      const w = W(), h = H();
+      const thickness = 60;
+      const walls = [
+        Bodies.rectangle(w / 2, h + thickness / 2, w + 200, thickness, { isStatic: true }),   // floor
+        Bodies.rectangle(w / 2, -thickness / 2, w + 200, thickness, { isStatic: true }),       // ceiling
+        Bodies.rectangle(-thickness / 2, h / 2, thickness, h + 200, { isStatic: true }),       // left
+        Bodies.rectangle(w + thickness / 2, h / 2, thickness, h + 200, { isStatic: true }),    // right
+      ];
+      Composite.add(engine.world, walls);
+    }
+
+    function syncDOM() {
+      matterBodies.forEach(b => {
+        const el = b.element;
+        const x = b.position.x - b.elWidth / 2;
+        const y = b.position.y - b.elHeight / 2;
+        const angle = b.angle * (180 / Math.PI);
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.transform = `rotate(${angle}deg)`;
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       MODE: GRAVITY
+    ═══════════════════════════════════════════ */
+    function startGravity() {
+      stopAllPhysics();
+      currentMode = 'gravity';
+      stopDrift();
+      createEngine();
+      engine.gravity.y = 1.8;
+      engine.gravity.x = 0;
+      createBodiesForFloaters();
+      addWalls();
+
+      function step() {
+        Engine.update(engine, 1000 / 60);
+        syncDOM();
+        animFrame = requestAnimationFrame(step);
+      }
+      animFrame = requestAnimationFrame(step);
+    }
+
+    /* ═══════════════════════════════════════════
+       MODE: BLACK HOLE
+    ═══════════════════════════════════════════ */
+    const blackHole = document.getElementById('black-hole');
+
+    function startBlackHole() {
+      stopAllPhysics();
+      currentMode = 'blackhole';
+      stopDrift();
+      blackHole.classList.add('active');
+
+      const cx = W() / 2, cy = H() / 2;
+
+      createEngine();
+      createBodiesForFloaters();
+      // No walls — let things collapse
+
+      function step() {
+        matterBodies.forEach(b => {
+          const dx = cx - b.position.x;
+          const dy = cy - b.position.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const strength = Math.min(0.012, 800 / (dist * dist));
+          Body.applyForce(b, b.position, {
+            x: dx * strength * 0.003,
+            y: dy * strength * 0.003
+          });
+
+          // Fade as approaching center
+          const opacity = Math.max(0, Math.min(1, dist / 250));
+          b.element.style.opacity = opacity;
+
+          // Scale down near center
+          const scale = Math.max(0.05, Math.min(1, dist / 200));
+          b.element.style.transform = `rotate(${b.angle * 180 / Math.PI}deg) scale(${scale})`;
+        });
+
+        Engine.update(engine, 1000 / 60);
+        syncDOM();
+        animFrame = requestAnimationFrame(step);
+      }
+      animFrame = requestAnimationFrame(step);
+    }
+
+    /* ═══════════════════════════════════════════
+       MODE: SUPERNOVA
+    ═══════════════════════════════════════════ */
+    const supernovaFlash = document.getElementById('supernova-flash');
+
+    function startSupernova() {
+      stopAllPhysics();
+      currentMode = 'supernova';
+      stopDrift();
+
+      // Flash
+      supernovaFlash.classList.add('flash');
+      setTimeout(() => supernovaFlash.classList.remove('flash'), 120);
+
+      const cx = W() / 2, cy = H() / 2;
+
+      floaters.forEach(el => {
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        const ex = el.offsetLeft + w / 2;
+        const ey = el.offsetTop + h / 2;
+        let dx = ex - cx;
+        let dy = ey - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        dx /= dist;
+        dy /= dist;
+
+        const force = 800 + Math.random() * 1200;
+        const tx = ex + dx * force;
+        const ty = ey + dy * force;
+        const rot = (Math.random() - 0.5) * 720;
+
+        el.style.transition = 'transform 1.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.8s ease';
+        el.style.transform = `translate(${tx - el.offsetLeft}px, ${ty - el.offsetTop}px) rotate(${rot}deg) scale(0.3)`;
+        el.style.opacity = '0';
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       MODE: TIME WARP
+    ═══════════════════════════════════════════ */
+    const statusTime = document.getElementById('status-time');
+
+    function startTimeWarp() {
+      stopAllPhysics();
+      currentMode = 'timewarp';
+      universe.classList.add('time-warp');
+      statusTime.classList.add('visible');
+
+      // Slow down drift animations
+      floaters.forEach(el => {
+        el.classList.add('drifting');
+        el.style.animationDuration = '80s';
+        el.style.animationTimingFunction = 'linear';
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       MODE: DARK MATTER
+    ═══════════════════════════════════════════ */
+    const statusDark = document.getElementById('status-dark');
+
+    function startDarkMatter() {
+      stopAllPhysics();
+      currentMode = 'darkmatter';
+      universe.classList.add('dark-matter');
+      statusDark.classList.add('visible');
+
+      floaters.forEach(el => {
+        el.style.opacity = '0.12';
+        el.classList.add('drifting');
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       MODE: ENTROPY
+    ═══════════════════════════════════════════ */
+    let entropyInterval = null;
+
+    function startEntropy() {
+      stopAllPhysics();
+      currentMode = 'entropy';
+      stopDrift();
+
+      floaters.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        // Each element drifts in random direction
+        const dx = (Math.random() - 0.5) * 600;
+        const dy = (Math.random() - 0.5) * 600;
+        const rot = (Math.random() - 0.5) * 180;
+
+        el.style.transition = 'transform 8s linear, opacity 10s ease';
+
+        // Stagger start
+        setTimeout(() => {
+          el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+          el.style.opacity = '0.08';
+        }, Math.random() * 2000);
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       RESET
+    ═══════════════════════════════════════════ */
+    function resetAll() {
+      stopAllPhysics();
+      currentMode = null;
+
+      // Clear classes
+      universe.classList.remove('time-warp', 'dark-matter');
+      statusTime.classList.remove('visible');
+      statusDark.classList.remove('visible');
+      blackHole.classList.remove('active');
+
+      floaters.forEach(el => {
+        el.classList.add('resetting');
+        el.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.5s ease';
+        el.style.opacity = '1';
+        el.style.animationDuration = '';
+        el.style.animationTimingFunction = '';
+
+        const p = positions[el.id];
+        if (p) {
+          const px = (p.x / 100) * W();
+          const py = (p.y / 100) * H();
+          el.style.left = px + 'px';
+          el.style.top = py + 'px';
+          el.style.transform = `translate(${-p.ax * 100}%, ${-p.ay * 100}%)`;
+        }
+
+        setTimeout(() => {
+          el.classList.remove('resetting');
+          el.style.transition = '';
+          el.classList.add('drifting');
+        }, 900);
+      });
+
+      updateActiveBtn(null);
+    }
+
+    /* ═══════════════════════════════════════════
+       HELPERS
+    ═══════════════════════════════════════════ */
+    function stopDrift() {
+      floaters.forEach(el => {
+        el.classList.remove('drifting');
+        // Compute current transform from animation and freeze
+        const computed = getComputedStyle(el);
+        const matrix = computed.transform;
+        if (matrix && matrix !== 'none') {
+          el.style.transform = matrix;
+        }
+      });
+    }
+
+    function stopAllPhysics() {
+      if (animFrame) {
+        cancelAnimationFrame(animFrame);
+        animFrame = null;
+      }
+      if (entropyInterval) {
+        clearInterval(entropyInterval);
+        entropyInterval = null;
+      }
+      destroyEngine();
+      blackHole.classList.remove('active');
+      universe.classList.remove('time-warp', 'dark-matter');
+      statusTime.classList.remove('visible');
+      statusDark.classList.remove('visible');
+
+      // Clear inline transitions/opacity from previous mode
+      floaters.forEach(el => {
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.animationDuration = '';
+        el.style.animationTimingFunction = '';
+      });
+    }
+
+    function updateActiveBtn(mode) {
+      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      if (mode) {
+        const active = document.querySelector(`.btn[data-mode="${mode}"]`);
+        if (active) active.classList.add('active');
+      }
+    }
+
+    /* ═══════════════════════════════════════════
+       EVENT HANDLERS
+    ═══════════════════════════════════════════ */
+    const hudMode = document.getElementById('hud-mode');
+
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        if (mode === 'reset') {
+          resetAll();
+          hudMode.textContent = 'MODE: ZERO-G';
+          return;
+        }
+
+        // If same mode clicked, reset first
+        if (currentMode === mode) {
+          resetAll();
+          hudMode.textContent = 'MODE: ZERO-G';
+          return;
+        }
+
+        updateActiveBtn(mode);
+        hudMode.textContent = `MODE: ${mode.toUpperCase().replace('BLACKHOLE', 'BLACK HOLE').replace('TIMEWARP', 'TIME WARP').replace('DARKMATTER', 'DARK MATTER')}`;
+
+        switch (mode) {
+          case 'gravity': startGravity(); break;
+          case 'blackhole': startBlackHole(); break;
+          case 'supernova': startSupernova(); break;
+          case 'timewarp': startTimeWarp(); break;
+          case 'darkmatter': startDarkMatter(); break;
+          case 'entropy': startEntropy(); break;
+        }
+      });
+    });
+
+    /* ═══════════════════════════════════════════
+       HUD CLOCK
+    ═══════════════════════════════════════════ */
+    const hudTime = document.getElementById('hud-time');
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      hudTime.textContent = `${h}:${m}:${s} UTC`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* ═══════════════════════════════════════════
+       FPS COUNTER
+    ═══════════════════════════════════════════ */
+    const hudFps = document.getElementById('hud-fps');
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+
+    function trackFps() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        hudFps.textContent = `${frameCount} FPS`;
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+      requestAnimationFrame(trackFps);
+    }
+    requestAnimationFrame(trackFps);
+
+    /* ═══════════════════════════════════════════
+       TRANSITION OVERLAY CLEANUP
+    ═══════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════
+       TRANSITION OVERLAY CLEANUP & HERO CLICK
+    ═══════════════════════════════════════════ */
+    function hideOverlay() {
+      const overlay = document.getElementById('transition-overlay');
+      if (overlay) {
+        overlay.classList.add('fade-out');
+        setTimeout(() => overlay.remove(), 600);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', hideOverlay);
+    } else {
+      hideOverlay();
+    }
+
+    // Scroll down to physics laws when clicking the hero title
+    const heroTitle = document.getElementById('hero-title');
+    if (heroTitle) {
+      heroTitle.addEventListener('click', () => {
+        const target = document.getElementById('physics-laws');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       SCROLL REVEAL OBSERVER
+    ═══════════════════════════════════════════ */
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+        }
+      });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.scroll-reveal').forEach(el => revealObserver.observe(el));
+  </script>
+</body>
+
+</html>
