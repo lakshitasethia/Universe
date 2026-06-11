@@ -703,6 +703,29 @@
       justify-self: center;
       margin-top: 5px;
     }
+
+    .supernova-elem {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 999;
+      border-radius: 50%;
+      display: none;
+    }
+    #supernova-circle {
+      background: radial-gradient(circle, #fff 0%, #ffe566 30%, #ff6600 60%, transparent 100%);
+    }
+    #supernova-ring {
+      border: 3px solid #ff6600;
+      box-shadow: 0 0 30px #ff6600, 0 0 60px #ff9900;
+    }
+    #supernova-glow {
+      background: radial-gradient(circle, rgba(255,100,0,0.3) 0%, transparent 60%);
+      width: 100vw;
+      height: 100vw;
+    }
   </style>
 </head>
 
@@ -723,6 +746,9 @@
 
     <!-- SUPERNOVA FLASH -->
     <div id="supernova-flash"></div>
+    <div id="supernova-circle" class="supernova-elem"></div>
+    <div id="supernova-ring" class="supernova-elem"></div>
+    <div id="supernova-glow" class="supernova-elem"></div>
 
     <!-- STATUS LABELS -->
     <div id="status-time" class="status-label">⏱ TIME DILATION ACTIVE</div>
@@ -1236,44 +1262,116 @@
     /* ═══════════════════════════════════════════
        MODE: SUPERNOVA
     ═══════════════════════════════════════════ */
-    const supernovaFlash = document.getElementById('supernova-flash');
+        const supernovaFlash = document.getElementById('supernova-flash');
 
-     function startSupernova() {
+    function startSupernova() {
       stopAllPhysics();
       currentMode = 'supernova';
       stopDrift();
 
-      // Flash
-      supernovaFlash.classList.add('flash');
-      setTimeout(() => supernovaFlash.classList.remove('flash'), 120);
-
       const cx = W() / 2, cy = H() / 2;
 
+      // 1. Flash (0ms)
+      const circle = document.getElementById('supernova-circle');
+      if (circle) {
+        circle.style.display = 'block';
+        circle.style.width = '0px';
+        circle.style.height = '0px';
+        circle.style.opacity = '1';
+        circle.animate([
+          { width: '0px', height: '0px', opacity: 1 },
+          { width: '100vw', height: '100vw', opacity: 1, offset: 0.8 },
+          { width: '100vw', height: '100vw', opacity: 0 }
+        ], {
+          duration: 400,
+          easing: 'ease-out',
+          fill: 'forwards'
+        });
+        setTimeout(() => {
+          circle.style.display = 'none';
+        }, 400);
+      }
+
+      // 2. Shockwave ring (200ms)
+      const ring = document.getElementById('supernova-ring');
+      if (ring) {
+        setTimeout(() => {
+          ring.style.display = 'block';
+          ring.style.width = '0px';
+          ring.style.height = '0px';
+          ring.style.opacity = '1';
+          ring.animate([
+            { width: '0px', height: '0px', opacity: 1 },
+            { width: '150vw', height: '150vw', opacity: 0 }
+          ], {
+            duration: 1200,
+            easing: 'ease-out',
+            fill: 'forwards'
+          });
+        }, 200);
+        setTimeout(() => {
+          ring.style.display = 'none';
+        }, 1400);
+      }
+
+      // 3. Afterglow (500ms)
+      const glow = document.getElementById('supernova-glow');
+      if (glow) {
+        setTimeout(() => {
+          glow.style.display = 'block';
+          glow.style.opacity = '0';
+          glow.animate([
+            { opacity: 0 },
+            { opacity: 1, offset: 0.25 },
+            { opacity: 0 }
+          ], {
+            duration: 2000,
+            easing: 'ease-out',
+            fill: 'forwards'
+          });
+        }, 500);
+        setTimeout(() => {
+          glow.style.display = 'none';
+        }, 2500);
+      }
+
+      // 4. Elements blast outward (300ms)
       const elements = getFallingElements();
-      elements.forEach(el => {
-        if (!el.dataset.origStyle) {
-          el.dataset.origStyle = el.getAttribute('style') || '';
-        }
-        
-        const w = el.offsetWidth;
-        const h = el.offsetHeight;
-        const ex = el.offsetLeft + w / 2;
-        const ey = el.offsetTop + h / 2;
-        let dx = ex - cx;
-        let dy = ey - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        dx /= dist;
-        dy /= dist;
+      setTimeout(() => {
+        elements.forEach(el => {
+          if (!el.dataset.origStyle) {
+            el.dataset.origStyle = el.getAttribute('style') || '';
+          }
 
-        const force = 800 + Math.random() * 1200;
-        const tx = ex + dx * force;
-        const ty = ey + dy * force;
-        const rot = (Math.random() - 0.5) * 720;
+          const rect = el.getBoundingClientRect();
+          const ex = rect.left + rect.width / 2;
+          const ey = rect.top + rect.height / 2;
 
-        el.style.transition = 'transform 1.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.8s ease';
-        el.style.transform = `translate(${tx - el.offsetLeft}px, ${ty - el.offsetTop}px) rotate(${rot}deg) scale(0.3)`;
-        el.style.opacity = '0';
-      });
+          const dx = ex - cx;
+          const dy = ey - cy;
+          const angle = (dx === 0 && dy === 0) ? Math.random() * Math.PI * 2 : Math.atan2(dy, dx);
+
+          const dist = 600 + Math.random() * 600;
+          const tx = Math.cos(angle) * dist;
+          const ty = Math.sin(angle) * dist;
+          const rot = 180 + Math.random() * 540;
+
+          // Staggered delay (0 to 200ms)
+          const delay = Math.random() * 200;
+
+          el.style.transition = 'transform 0.8s cubic-bezier(0.2, 0, 1, 0.8), opacity 0.8s';
+          el.style.transitionDelay = `${delay}ms`;
+
+          el.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg)`;
+          el.style.opacity = '0';
+
+          setTimeout(() => {
+            if (currentMode === 'supernova') {
+              el.style.display = 'none';
+            }
+          }, delay + 850);
+        });
+      }, 300);
     }
 
     /* ═══════════════════════════════════════════
@@ -1438,6 +1536,14 @@
       blackHole.style.transform = '';
       blackHole.style.opacity = '';
       blackHole.style.transition = '';
+
+      const sc = document.getElementById('supernova-circle');
+      const sr = document.getElementById('supernova-ring');
+      const sg = document.getElementById('supernova-glow');
+      if (sc) { sc.style.display = 'none'; sc.style.transform = ''; sc.style.opacity = ''; }
+      if (sr) { sr.style.display = 'none'; sr.style.transform = ''; sr.style.opacity = ''; }
+      if (sg) { sg.style.display = 'none'; sg.style.transform = ''; sg.style.opacity = ''; }
+
       universe.classList.remove('time-warp', 'dark-matter');
       statusTime.classList.remove('visible');
       statusDark.classList.remove('visible');
